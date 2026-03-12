@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<title>Cais do Valongo – Reservas</title>
+
+<link rel="manifest" href="manifest.json">
+
+<style>
+
+body{
+font-family:Arial;
+background:#f2f4f7;
+margin:0;
+padding:0;
+}
+
+header{
+background:#0f172a;
+color:white;
+padding:15px;
+text-align:center;
+}
+
+.container{
+padding:15px;
+}
+
+input,button,textarea{
+width:100%;
+padding:10px;
+margin:5px 0;
+border-radius:6px;
+border:1px solid #ccc;
+}
+
+button{
+background:#0ea5e9;
+color:white;
+border:none;
+font-weight:bold;
+}
+
+.card{
+background:white;
+padding:10px;
+border-radius:8px;
+margin-top:10px;
+box-shadow:0 2px 5px rgba(0,0,0,0.1);
+}
+
+.resumo{
+display:flex;
+justify-content:space-between;
+margin-top:10px;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<header>
+
+<h2>Cais do Valongo</h2>
+<p>Estúdio 1002 – Reservas</p>
+
+</header>
+
+<div class="container">
+
+<h3>Nova Reserva</h3>
+
+<input id="nome" placeholder="Nome do hóspede">
+
+<input id="telefone" placeholder="Telefone">
+
+<label>Check-in</label>
+<input type="date" id="checkin">
+
+<label>Check-out</label>
+<input type="date" id="checkout">
+
+<input type="number" id="diaria" placeholder="Valor da diária">
+
+<textarea id="obs" placeholder="Observações"></textarea>
+
+<button onclick="adicionar()">Salvar Reserva</button>
+
+<h3>Reservas</h3>
+
+<div id="lista"></div>
+
+<div class="card">
+
+<h3>Resumo</h3>
+
+<div class="resumo">
+<span>Faturamento</span>
+<span id="faturamento">0</span>
+</div>
+
+<div class="resumo">
+<span>Reservas</span>
+<span id="totalReservas">0</span>
+</div>
+
+</div>
+
+<button onclick="exportar()">Exportar Excel</button>
+
+</div>
+
+<script>
+
+let reservas = JSON.parse(localStorage.getItem("reservas_app")) || []
+
+function salvar(){
+
+localStorage.setItem("reservas_app",JSON.stringify(reservas))
+
+}
+
+function dias(a,b){
+
+let d1=new Date(a)
+let d2=new Date(b)
+
+return Math.ceil((d2-d1)/(1000*60*60*24))
+
+}
+
+function conflito(inicio,fim){
+
+for(let r of reservas){
+
+if(inicio < r.checkout && fim > r.checkin){
+
+return true
+
+}
+
+}
+
+return false
+
+}
+
+function adicionar(){
+
+let nome=nomeInput.value
+let telefone=telefone.value
+let checkin=checkinInput.value
+let checkout=checkoutInput.value
+let diaria=parseFloat(diariaInput.value)
+let obs=obsInput.value
+
+if(!nome || !checkin || !checkout || !diaria){
+
+alert("Preencha os campos")
+
+return
+
+}
+
+if(conflito(checkin,checkout)){
+
+alert("Data já reservada")
+
+return
+
+}
+
+let noites=dias(checkin,checkout)
+
+let total=noites*diaria
+
+reservas.push({nome,telefone,checkin,checkout,noites,total,obs})
+
+salvar()
+
+mostrar()
+
+}
+
+function remover(i){
+
+reservas.splice(i,1)
+
+salvar()
+
+mostrar()
+
+}
+
+function mostrar(){
+
+let lista=document.getElementById("lista")
+
+lista.innerHTML=""
+
+let faturamento=0
+
+reservas.forEach((r,i)=>{
+
+let card=document.createElement("div")
+
+card.className="card"
+
+card.innerHTML=`
+
+<b>${r.nome}</b><br>
+${r.checkin} → ${r.checkout}<br>
+${r.noites} noites<br>
+R$ ${r.total}<br>
+<button onclick="remover(${i})">Excluir</button>
+
+`
+
+lista.appendChild(card)
+
+faturamento+=r.total
+
+})
+
+faturamento.innerText=faturamento
+
+document.getElementById("faturamento").innerText="R$ "+faturamento
+
+document.getElementById("totalReservas").innerText=reservas.length
+
+}
+
+function exportar(){
+
+let texto="Hospede,Checkin,Checkout,Noites,Valor\n"
+
+reservas.forEach(r=>{
+
+texto+=`${r.nome},${r.checkin},${r.checkout},${r.noites},${r.total}\n`
+
+})
+
+let blob=new Blob([texto],{type:"text/csv"})
+
+let a=document.createElement("a")
+
+a.href=URL.createObjectURL(blob)
+
+a.download="reservas_valongo.csv"
+
+a.click()
+
+}
+
+mostrar()
+
+if('serviceWorker' in navigator){
+
+navigator.serviceWorker.register('sw.js')
+
+}
+
+</script>
+
+</body>
+</html>
